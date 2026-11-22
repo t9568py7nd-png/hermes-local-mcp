@@ -1,0 +1,23 @@
+{
+  "name": "hermes-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Hermes \u2014 a custom MCP server with a discovery/call UI",
+  "main": "src/mcp.js",
+  "bin": {
+    "hermes-mcp": "src/mcp.js"
+  },
+  "scripts": {
+    "mcp": "node src/mcp.js",
+    "ui": "node src/web.js",
+    "test": "node test/handshake.test.js && node test/concurrency.test.js",
+    "demo": "node scripts/demo-client.js",
+    "sync-repos": "bash scripts/sync-repos.sh",
+    "atlas": "node -e \"import('./src/tools.js').then(m=>{const r=m.callTool('hermes_atlas_scan',{});console.log(JSON.stringify(r.totals))})\""
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "express": "^4.21.2"
+  }
+}

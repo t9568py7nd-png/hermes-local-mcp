@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hermes — MCP Console</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#111821; --panel-2:#0e141c; --line:#1e2a36;
+    --text:#e6edf5; --dim:#8b9bad; --accent:#f0b429; --accent-2:#39d3a4;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;background:
+      radial-gradient(900px 500px at 12% -10%, #17303a 0%, transparent 60%),
+      radial-gradient(700px 420px at 100% 0%, #2a2011 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    display:flex;flex-direction:column;min-height:100vh;
+  }
+  header{
+    display:flex;align-items:center;gap:14px;padding:16px 22px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);
+  }
+  .mark{
+    width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+    background:linear-gradient(145deg,#f0b429,#c8860d);color:#1b1200;font-weight:800;letter-spacing:-1px;
+    box-shadow:0 6px 18px rgba(240,180,41,.28);
+  }
+  h1{font-size:15px;letter-spacing:.22em;margin:0;font-weight:700;text-transform:uppercase}
+  h1 span{color:var(--dim);font-weight:500;letter-spacing:.08em;text-transform:none;font-size:12px;margin-left:10px}
+  .pill{
+    margin-left:auto;display:flex;align-items:center;gap:8px;font:12px/1 var(--mono);
+    padding:7px 12px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--dim);
+  }
+  .nav{color:var(--dim);text-decoration:none;font:12px/1 var(--mono);padding:7px 11px;border:1px solid var(--line);border-radius:999px}
+  .nav:hover{color:var(--text);border-color:#2b3a4a}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+  .dot.ok{background:var(--accent-2);box-shadow:0 0 0 3px rgba(57,211,164,.16)}
+  .dot.bad{background:#ff6b6b;box-shadow:0 0 0 3px rgba(255,107,107,.16)}
+  main{flex:1;display:grid;grid-template-columns:290px 1fr;min-height:0}
+  aside{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:rgba(10,14,19,.5)}
+  .side-head{padding:14px 16px 8px;font:11px/1 var(--mono);letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+  .tool-list{overflow:auto;padding:4px 8px 12px;flex:1}
+  .tool{
+    display:block;width:100%;text-align:left;padding:9px 11px;border-radius:9px;border:1px solid transparent;
+    background:transparent;color:var(--text);cursor:pointer;font:13px/1.35 var(--mono);
+  }
+  .tool:hover{background:var(--panel)}
+  .tool.active{background:var(--panel);border-color:#2b3a4a;box-shadow:inset 2px 0 0 var(--accent)}
+  .tool small{display:block;color:var(--dim);font:11px/1.4 ui-sans-serif,system-ui;margin-top:2px}
+  .res{margin:10px 12px 16px;padding:10px;border:1px dashed var(--line);border-radius:9px;font:11px/1.6 var(--mono);color:var(--dim)}
+  .res b{color:var(--text);font-weight:600}
+  section.body{padding:22px 26px;overflow:auto;min-height:0}
+  .title{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .title h2{margin:0;font:600 20px/1.2 var(--mono)}
+  .badge{font:10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+    border:1px solid rgba(240,180,41,.35);background:rgba(240,180,41,.08);padding:5px 8px;border-radius:6px}
+  .desc{color:var(--dim);margin:8px 0 18px;max-width:70ch}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  @media(max-width:1000px){.grid{grid-template-columns:1fr} main{grid-template-columns:1fr} aside{border-right:0;border-bottom:1px solid var(--line)}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .card h3{margin:0 0 12px;font:11px/1 var(--mono);letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+  label{display:block;margin-bottom:12px}
+  label b{display:block;font:11px/1 var(--mono);color:var(--dim);margin-bottom:6px;font-weight:500}
+  input[type=text],textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;color:var(--text);
+    padding:9px 11px;font:13px/1.5 var(--mono);outline:none;
+  }
+  input:focus,textarea:focus{border-color:#3a5570;box-shadow:0 0 0 3px rgba(58,85,112,.25)}
+  textarea{min-height:96px;resize:vertical}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  button.run{
+    margin-top:6px;padding:10px 18px;border-radius:9px;border:0;cursor:pointer;
+    background:linear-gradient(180deg,#f6c34a,#e0a416);
+    color:#1b1200;font:600 13px/1 ui-sans-serif,system-ui;
+  }
+  button.run:disabled{opacity:.6;cursor:progress}
+  button.ghost{padding:9px 14px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);
+    color:var(--text);cursor:pointer;font:12px/1 var(--mono)}
+  pre{
+    margin:0;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:14px;
+    overflow:auto;font:12px/1.6 var(--mono);color:#cfe3f5;max-height:420px;white-space:pre-wrap;word-break:break-word;
+  }
+  .meta{font:11px/1 var(--mono);color:var(--dim);margin-top:10px;display:flex;gap:14px}
+  .err{color:#ff8f8f}
+  footer{border-top:1px solid var(--line);padding:10px 22px;font:11px/1.6 var(--mono);color:var(--dim);
+    display:flex;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<header>
+  <div class="mark">H</div>
+  <h1>Hermes <span>MCP console</span></h1>
+  <a class="nav" href="/atlas.html">repo atlas →</a>
+  <div class="pill"><span class="dot" id="dot"></span><span id="status">connecting…</span></div>
+</header>
+
+<main>
+  <aside>
+    <div class="side-head">Tools</div>
+    <div class="tool-list" id="toolList"></div>
+    <div class="res" id="resources"></div>
+  </aside>
+
+  <section class="body">
+    <div class="title">
+      <h2 id="toolName">—</h2>
+      <span class="badge" id="toolBadge">tool</span>
+    </div>
+    <p class="desc" id="toolDesc">Pick a tool from the left to inspect its schema and call it.</p>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Arguments</h3>
+        <form id="argForm"></form>
+        <div class="row">
+          <button class="run" id="runBtn" type="button">Run tool</button>
+          <button class="ghost" id="resetBtn" type="button">Reset</button>
+          <button class="ghost" id="rawBtn" type="button">Raw JSON</button>
+        </div>
+        <div id="rawWrap" style="display:none;margin-top:12px">
+          <textarea id="rawArgs" spellcheck="false"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Result</h3>
+        <pre id="result">// no call yet</pre>
+        <div class="meta" id="resultMeta"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span id="fServer">–</span>
+  <span id="fTools">–</span>
+  <span id="fNotes">–</span>
+</footer>
+
+<script>
+const state = { info: null, tool: null, lastArgs: {} };
+const $ = (id) => document.getElementById(id);
+
+let TOKEN = localStorage.getItem('hermes-token') || '';
+async function apiFetch(url, opts = {}) {
+  const headers = { ...(opts.headers || {}) };
+  if (TOKEN) headers.authorization = `Bearer ${TOKEN}`;
+  let res = await fetch(url, { ...opts, headers });
+  if (res.status === 401) {
+    const entered = window.prompt('This Hermes bridge requires a bearer token:');
+    if (entered) {
+      TOKEN = entered.trim();
+      localStorage.setItem('hermes-token', TOKEN);
+      res = await fetch(url, { ...opts, headers: { ...headers, authorization: `Bearer ${TOKEN}` } });
+    }
+  }
+  return res;
+}
+
+async function boot() {
+  try {
+    const info = await (await apiFetch('/api/info')).json();
+    state.info = info;
+    $('dot').className = 'dot ok';
+    $('status').textContent = `connected · ${info.server.name} v${info.server.version}`;
+    $('fServer').textContent = `server ${info.server.name}@${info.server.version} · pid ${info.transport.pid}`;
+    $('fTools').textContent = `${info.counts.tools} tools`;
+    $('fNotes').textContent = `${info.counts.notes} notes stored`;
+    renderTools(info.tools);
+    renderResources(info.resources);
+    selectTool(info.tools[0]?.name);
+  } catch (e) {
+    $('dot').className = 'dot bad';
+    $('status').textContent = 'disconnected';
+  }
+}
+
+function renderTools(tools) {
+  const list = $('toolList');
+  list.innerHTML = '';
+  for (const t of tools) {
+    const b = document.createElement('button');
+    b.className = 'tool';
+    b.dataset.name = t.name;
+    b.innerHTML = `${t.name}<small>${(t.description || '').slice(0, 70)}</small>`;
+    b.onclick = () => selectTool(t.name);
+    list.appendChild(b);
+  }
+}
+
+function renderResources(resources) {
+  $('resources').innerHTML = '<b>Resources</b><br>' + resources.map(r => r.uri).join('<br>');
+}
+
+function selectTool(name) {
+  const t = state.info.tools.find(x => x.name === name);
+  if (!t) return;
+  state.tool = t;
+  document.querySelectorAll('.tool').forEach(el => el.classList.toggle('active', el.dataset.name === name));
+  $('toolName').textContent = t.name;
+  $('toolDesc').textContent = t.description || '';
+  $('result').textContent = '// no call yet';
+  $('resultMeta').innerHTML = '';
+  buildForm(t);
+  $('rawArgs').value = JSON.stringify(defaultArgs(t), null, 2);
+}
+
+function defaultArgs(t) {
+  const out = {};
+  const props = t.inputSchema?.properties || {};
+  for (const [k, v] of Object.entries(props)) {
+    if (v.default !== undefined) out[k] = v.default;
+    else if (v.type === 'array') out[k] = [];
+    else if (v.type === 'number' || v.type === 'integer') out[k] = 0;
+    else out[k] = '';
+  }
+  return out;
+}
+
+function buildForm(t) {
+  const form = $('argForm');
+  form.innerHTML = '';
+  const props = t.inputSchema?.properties || {};
+  const required = new Set(t.inputSchema?.required || []);
+  if (Object.keys(props).length === 0) {
+    form.innerHTML = '<p style="color:#8b9bad;margin:0 0 12px">This tool takes no arguments.</p>';
+    return;
+  }
+  for (const [k, v] of Object.entries(props)) {
+    const label = document.createElement('label');
+    const title = document.createElement('b');
+    title.textContent = k + (required.has(k) ? ' *' : '') + (v.type ? ` · ${v.type}` : '');
+    label.appendChild(title);
+    let input;
+    if (v.type === 'array') {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'comma, separated, values';
+      input.dataset.kind = 'array';
+    } else if (k === 'text' || k === 'expression' || (v.description || '').length > 60) {
+      input = document.createElement('textarea');
+      input.dataset.kind = 'string';
+    } else {
+      input = document.createElement('input');
+      input.type = 'text';
+      input.dataset.kind = v.type === 'number' || v.type === 'integer' ? 'number' : 'string';
+    }
+    input.dataset.key = k;
+    input.placeholder = v.description || '';
+    label.appendChild(input);
+    form.appendChild(label);
+  }
+}
+
+function collectArgs() {
+  if ($('rawWrap').style.display !== 'none') {
+    return JSON.parse($('rawArgs').value || '{}');
+  }
+  const args = {};
+  for (const el of $('argForm').querySelectorAll('[data-key]')) {
+    const k = el.dataset.key;
+    const kind = el.dataset.kind;
+    const raw = el.value.trim();
+    if (raw === '') continue;
+    if (kind === 'array') args[k] = raw.split(',').map(s => s.trim()).filter(Boolean);
+    else if (kind === 'number') args[k] = Number(raw);
+    else args[k] = el.value;
+  }
+  return args;
+}
+
+async function run() {
+  if (!state.tool) return;
+  let args;
+  try { args = collectArgs(); }
+  catch (e) {
+    $('result').innerHTML = `<span class="err">Invalid JSON: ${e.message}</span>`;
+    return;
+  }
+  const btn = $('runBtn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+  const started = performance.now();
+  try {
+    const res = await apiFetch('/api/call', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: state.tool.name, args }),
+    });
+    const data = await res.json();
+    const elapsed = (performance.now() - started).toFixed(1);
+    if (data.ok) {
+      $('result').textContent = JSON.stringify(data.result, null, 2);
+      $('resultMeta').innerHTML = `<span>200 OK</span><span>${elapsed} ms</span><span>${state.tool.name}</span>`;
+    } else {
+      $('result').innerHTML = `<span class="err">${data.error}</span>`;
+      $('resultMeta').innerHTML = `<span>${res.status}</span><span>${elapsed} ms</span>`;
+    }
+    // refresh note counter
+    const info = await (await apiFetch('/api/info')).json();
+    state.info = info;
+    $('fNotes').textContent = `${info.counts.notes} notes stored`;
+  } catch (e) {
+    $('result').innerHTML = `<span class="err">Request failed: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run tool';
+  }
+}
+
+$('runBtn').onclick = run;
+$('resetBtn').onclick = () => selectTool(state.tool.name);
+$('rawBtn').onclick = () => {
+  const wrap = $('rawWrap');
+  const showing = wrap.style.display !== 'none';
+  if (!showing) $('rawArgs').value = JSON.stringify(collectArgs(), null, 2);
+  wrap.style.display = showing ? 'none' : 'block';
+};
+boot();
+</script>
+</body>
+</html>

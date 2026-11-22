@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "hermes": {
+      "command": "node",
+      "args": ["/absolute/path/to/hermes-mcp/src/mcp.js"],
+      "env": {
+        "HERMES_DATA_DIR": "/absolute/path/to/hermes-data"
+      }
+    }
+  }
+}
