@@ -1,124 +1,120 @@
-# Hermes — custom MCP server + console
+# Hermes
 
-A self-contained [Model Context Protocol](https://modelcontextprotocol.io) server named **hermes**, plus a
-browser console that discovers the server, lists its tools and calls them live.
+A local-first [Model Context Protocol](https://modelcontextprotocol.io) server that gives your
+agent a persistent notebook, a searchable map of your local repositories, and a live console for
+calling every tool by hand.
 
-```
-hermes-mcp/
-├── src/
-│   ├── mcp.js        # MCP server (stdio JSON-RPC, official SDK)
-│   ├── tools.js      # tool registry (7 tools) + safe expression evaluator
-│   ├── store.js      # persistent note storage (~/.hermes-mcp/notes.json)
-│   └── web.js        # HTTP bridge + static console on :4123
-├── public/index.html # the console UI
-├── test/handshake.test.js
-└── mcp.example.json  # ready-to-paste MCP client config
-```
-
-## Run it
+No account, no API key, no network call. Notes live in a JSON file you own.
 
 ```bash
-npm install
-
-npm run mcp     # MCP server on stdio  (this is what an MCP client launches)
-npm test        # 12-check MCP handshake + 8-check multi-process write test
-npm run ui      # console at http://127.0.0.1:4123 (loopback only)
-npm run demo    # spawns the server with a real MCP client and calls its tools
+npx hermes-local-mcp start        # console on http://127.0.0.1:4123
+npx hermes-local-mcp mcp-json     # ready-to-paste config for your MCP client
 ```
 
-## Tools
+## Why
 
-| Tool | What it does |
-| --- | --- |
-| `hermes_whoami` | server name, version, pid, uptime, note count, data dir |
-| `hermes_time` | current time in ISO 8601 + any IANA timezone |
-| `hermes_calc` | arithmetic `+ - * / % ^ ( )` via a real parser (no `eval`) |
-| `hermes_add_note` | store text with tags, persisted to JSON |
-| `hermes_list_notes` | filter by substring and/or tags |
-| `hermes_delete_note` | delete by id |
-| `hermes_env_info` | platform, arch, cpus, memory, hostname, uptime |
-| `hermes_atlas_scan` | re-index every repo checkout into the knowledge map |
-| `hermes_atlas_search` | search repo names, READMEs, symbols, headings, entrypoints |
-| `hermes_atlas_repo` | one repo in full: git state, languages, symbols, manifest |
-| `hermes_atlas_status` | when the map was built, where the repos live, coverage |
+- **Your agent forgets; Hermes doesn't.** Notes survive restarts and are shared across every client
+  you connect (Claude Desktop, Cursor, VS Code, any MCP host).
+- **Local code context without uploading code.** Point it at your checkouts and it indexes
+  languages, exported symbols, headings, entrypoints and manifest dependencies.
+- **You can see what your agent sees.** The console is the same tool registry the MCP server exposes,
+  not a mock, so debugging a tool call is one click instead of a protocol trace.
 
-Resources: `hermes://notes`, `hermes://server-info`, `hermes://atlas`.
+## Install
 
-## Connect it to an MCP client
+Requires Node 18.17+.
 
-`npm run demo` proves the server works over a real MCP client (the SDK's
-`StdioClientTransport`): it initializes, lists tools, calls several, and reads a
-resource. It is the same path an MCP host takes when it launches the server.
+```bash
+npm install -g hermes-local-mcp
+hermes start
+hermes status
+hermes mcp-json     # copy the output into your client's config
+```
 
-Use the absolute path to `src/mcp.js` on your machine. Copy the entry from
-[`mcp.example.json`](./mcp.example.json):
+Or skip the install and use `npx hermes-local-mcp <command>`.
+
+### Connect a client
+
+`hermes mcp-json` prints the exact JSON for the directory Hermes is installed in:
 
 ```json
 {
   "mcpServers": {
     "hermes": {
-      "command": "node",
-      "args": ["/absolute/path/to/hermes-mcp/src/mcp.js"],
-      "env": { "HERMES_DATA_DIR": "/absolute/path/to/hermes-data" }
+      "command": "/usr/local/bin/node",
+      "args": ["/path/to/hermes-local-mcp/src/mcp.js"],
+      "env": { "HERMES_DATA_DIR": "/home/you/.hermes-mcp" }
     }
   }
 }
 ```
 
-* **Lemon Code** — Customize → MCP servers → add a server with the same `command` / `args` / `env`.
-  After it reconnects you should see the seven `hermes_*` tools in the tool list.
-* **Claude Desktop** — paste into `claude_desktop_config.json`, then restart the app.
-* **VS Code / Cursor** — paste into `.vscode/mcp.json` under `servers`.
+- **Claude Desktop** — paste into `claude_desktop_config.json`, restart the app.
+- **Cursor / VS Code** — paste into `~/.cursor/mcp.json` or `.vscode/mcp.json` under `servers`.
+- **Lemon Code** — Customize → MCP servers, same `command` / `args` / `env`.
 
-The server only speaks stdio: it prints logs to stderr and protocol frames to stdout, so nothing
-should write to stdout other than the SDK.
+The server speaks stdio only: logs go to stderr, protocol frames to stdout.
 
-## Concurrency and safety
+## CLI
 
-- Every write takes an `O_EXCL` lock on `notes.lock`, so the stdio server and the
-  HTTP bridge can write at the same time. `npm test` spawns four processes that
-  add 800 notes at once and asserts all 800 survive with no leftover temp files.
-- Writes go to a unique temp file and are renamed into place; the previous file is
-  kept as `notes.json.bak` and used automatically if `notes.json` is ever corrupt.
-- The bridge binds `127.0.0.1` by default. Set `HERMES_HTTP_HOST=0.0.0.0` only if
-  you also set `HERMES_HTTP_TOKEN=<secret>`; `/api/*` then requires
-  `Authorization: Bearer <secret>` and the console prompts for it.
+| Command | Does |
+| --- | --- |
+| `hermes start` | Run the console in the background (idempotent) |
+| `hermes stop` | Stop it |
+| `hermes restart` | Stop then start |
+| `hermes status` | Health check, pid, data directory |
+| `hermes url` | Print the console address |
+| `hermes mcp-json` | Print a client config for this install |
+| `hermes logs` | Last 60 lines of the console log |
 
-## Console
+## Tools
 
-`npm run ui` serves the console. It talks to the same tool registry through
-`POST /api/call`, so it is a faithful preview of what an MCP client sees —
-not a mock. Endpoints: `/api/health`, `/api/info`, `/api/call`,
-`/api/resources/notes`, `/api/resources/server-info`.
+| Tool | What it does |
+| --- | --- |
+| `hermes_whoami` | Server name, version, pid, uptime, note count, data dir |
+| `hermes_time` | Current time in ISO 8601, optional IANA timezone |
+| `hermes_calc` | Arithmetic `+ - * / % ^ ( )` via a real parser (no `eval`) |
+| `hermes_add_note` | Store text with tags |
+| `hermes_list_notes` | Filter by substring and/or tags |
+| `hermes_delete_note` | Delete by id |
+| `hermes_env_info` | Platform, arch, cpus, memory, hostname, uptime |
+| `hermes_atlas_scan` | Re-index repo checkouts into the knowledge map |
+| `hermes_atlas_search` | Search repo names, READMEs, symbols, headings, entrypoints |
+| `hermes_atlas_repo` | One repo in full: git state, languages, symbols, manifest |
+| `hermes_atlas_status` | Map age, repo location, coverage |
+
+Resources: `hermes://notes`, `hermes://server-info`, `hermes://atlas`.
 
 ## Repo atlas
 
-Hermes keeps a knowledge map of your local repo checkouts so tools and the UI can
-search code structure without touching GitHub on every call.
-
 ```bash
-npm run sync-repos     # gh repo list → clone/fetch into ~/hermes-repos, then rescan
-npm run atlas          # rescan only
+hermes-local-mcp sync-repos   # gh repo list → clone/fetch into ~/hermes-repos, then rescan
+hermes-local-mcp atlas        # rescan only
 ```
 
-Env: `HERMES_REPOS_DIR` (default `~/hermes-repos`), `HERMES_GH_OWNER` (defaults to
-the signed-in `gh` account). The map lands in `$HERMES_DATA_DIR/atlas.json`
-(default `~/.hermes-mcp/atlas.json`) and covers languages, line counts, exported
-symbols, markdown headings, entrypoints and manifest dependencies, skipping
-`.git`, `node_modules`, `dist`, `venv` and friends. A full scan of ~10 repos
-(18k lines) takes about 60 ms.
+Env: `HERMES_REPOS_DIR` (default `~/hermes-repos`), `HERMES_GH_OWNER` (defaults to the signed-in
+`gh` account). The map lands in `$HERMES_DATA_DIR/atlas.json`; a scan of ~10 repos (18k lines)
+takes about 60 ms. Skips `.git`, `node_modules`, `dist`, `venv` and friends.
 
-In the browser, `http://127.0.0.1:4123/atlas.html` shows one card per repo, has
-live search and opens a full detail sheet on click. HTTP: `GET /api/atlas`,
-`POST /api/atlas/scan`, `GET /api/atlas/search?q=…`, `GET /api/atlas/<name>`.
+## Safety and data
 
-### Reaching it from other machines
+- Notes and the atlas are plain JSON in `$HERMES_DATA_DIR` (default `~/.hermes-mcp`). Back them up
+  by copying that directory; delete them by removing it.
+- Every write takes an `O_EXCL` lock and renames a temp file into place, so several processes can
+  write at once. The previous version is kept as `notes.json.bak` and restored automatically if the
+  main file is ever corrupt.
+- The console binds `127.0.0.1` by default. To expose it on a network, set both
+  `HERMES_HTTP_HOST=0.0.0.0` **and** `HERMES_HTTP_TOKEN=<secret>`; `/api/*` then requires
+  `Authorization: Bearer <secret>` and the UI prompts once. Never set the host without the token.
 
-The bridge binds `127.0.0.1` on purpose. To serve the console and the atlas to
-your whole network, put it behind a token too — never either option alone:
+## Develop
 
 ```bash
-HERMES_HTTP_HOST=0.0.0.0 HERMES_HTTP_TOKEN=$(openssl rand -hex 16) npm run ui
+npm install
+npm test        # 15-check MCP handshake + 8-check multi-process write test
+npm run demo    # spawn the server with a real MCP client and call its tools
 ```
 
-The UI asks for the token once and keeps it in `localStorage`.
+## License
+
+MIT

@@ -1,21 +1,42 @@
 {
-  "name": "hermes-mcp",
+  "name": "hermes-local-mcp",
   "version": "1.0.0",
-  "private": true,
+  "description": "A local-first MCP server for notes, a repo atlas and a live tool console \u2014 zero cloud, zero accounts.",
   "type": "module",
-  "description": "Hermes \u2014 a custom MCP server with a discovery/call UI",
   "main": "src/mcp.js",
   "bin": {
+    "hermes-local-mcp": "src/cli.js",
+    "hermes": "src/cli.js",
     "hermes-mcp": "src/mcp.js"
   },
+  "files": [
+    "src",
+    "public",
+    "mcp.example.json",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "mcp": "node src/mcp.js",
     "ui": "node src/web.js",
-    "test": "node test/handshake.test.js && node test/concurrency.test.js",
+    "test": "node test/handshake.test.js && node test/concurrency.test.js && node test/cli.test.js",
     "demo": "node scripts/demo-client.js",
     "sync-repos": "bash scripts/sync-repos.sh",
     "atlas": "node -e \"import('./src/tools.js').then(m=>{const r=m.callTool('hermes_atlas_scan',{});console.log(JSON.stringify(r.totals))})\""
   },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "local-first",
+    "ai-agents",
+    "claude",
+    "cursor",
+    "notes"
+  ],
+  "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
     "express": "^4.21.2"

@@ -2,3 +2,6 @@ node_modules/
 ui.log
 .env
 *.log
+hermes-data/
+*.tgz
+.DS_Store
