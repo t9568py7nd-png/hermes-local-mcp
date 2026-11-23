@@ -114,6 +114,19 @@ try {
   check('second paid tool bills separately and answers',
     repo.paymentMade === true && JSON.parse(repo.content[0].text).name === 'demo-repo');
 
+  const ledgerLines = fs.readFileSync(path.join(dataDir, 'payments.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  check('settled payments are appended to the ledger, free calls are not',
+    ledgerLines.length === 2 &&
+      ledgerLines.map((e) => e.tool).sort().join(',') === 'hermes_atlas_repo,hermes_atlas_scan' &&
+      ledgerLines.every((e) => e.mock === true && e.transaction && e.payer),
+    ledgerLines.map((e) => `${e.tool}:${e.amount}`).join(' '));
+
+  const earnings = await (await fetch(`http://127.0.0.1:${PORT}/earnings`)).json();
+  check('earnings counts mock volume but reports zero real revenue',
+    earnings.real.count === 0 && earnings.real.totalUsd === 0 &&
+      earnings.mock.count === 2 && earnings.mock.totalUsd === 0.03,
+    JSON.stringify({ real: earnings.real, mock: earnings.mock }));
+
   const guarded = await connect({ autoPayment: true, approve: false });
   let denied = false;
   try {
