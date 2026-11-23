@@ -130,6 +130,23 @@ PAYER_PRIVATE_KEY=0xFundedTestnetKey npm run paid:client
 | `X402_NETWORK` | `eip155:84532` | Base Sepolia |
 | `X402_PRICE_SCAN` / `X402_PRICE_REPO` | `$0.02` / `$0.01` | Price per call |
 | `PORT` / `HOST` | `4130` / `127.0.0.1` | Listen address |
+| `X402_LEDGER` | `$HERMES_DATA_DIR/payments.jsonl` | Where settled payments are recorded |
+| `X402_ADMIN_TOKEN` | — | Required to read `/earnings` when `HOST` is not loopback |
+
+### Knowing what you earned
+
+Every settled payment is appended to `payments.jsonl` (time, tool, amount, asset, network, payer,
+transaction) and summarised at `GET /earnings`:
+
+```bash
+curl -s http://127.0.0.1:4130/earnings | jq
+# { real: {count, totalUsd, byTool}, mock: {...}, recent: [...], ledger: "..." }
+```
+
+Mock settlements are written too but land in `mock` and never in `real`, so a demo cannot inflate
+your revenue. The file is the audit trail: keep it, back it up, and reconcile `recent[].transaction`
+against the chain. `/earnings` is local-only on the default loopback bind; behind a public address
+it answers 404 unless the request carries `x-hermes-token: $X402_ADMIN_TOKEN`.
 
 The client (`scripts/paid-client.js`) prints the 402 challenge before paying, then pays and prints
 the settlement. It refuses any call above `MAX_PRICE_USD` (default `0.05`) in its
